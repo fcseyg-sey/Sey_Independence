@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Seychelles 50th Independence Day - Unity Map & History</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none; /* avoids accidental text selection on tap */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a2f2a;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+            z-index: 1;
+        }
+
+        /* Stats Panel – elegant glassmorphism with counter & unique entries */
+        .stats-panel {
+            position: absolute;
+            top: 20px;
+            left: 16px;
+            background: rgba(0, 0, 0, 0.65);
+            backdrop-filter: blur(12px);
+            border-radius: 32px;
+            padding: 10px 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 16px;
+            align-items: baseline;
+            flex-wrap: wrap;
+            border: 1px solid rgba(255, 215, 0, 0.5);
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            pointer-events: none;
+        }
+
+        .stat-card {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px black;
+            font-size: 0.9rem;
+            letter-spacing: 0.3px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: #ffd966;
+            line-height: 1;
+            margin-right: 4px;
+        }
+
+        .stat-card span:last-child {
+            font-size: 0.75rem;
+            opacity: 0.9;
+        }
+
+        .divider {
+            width: 1px;
+            height: 28px;
+            background: rgba(255,255,200,0.3);
+        }
+
+        /* bottom message panel - clean, no extra symbols */
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: 48px;
+            padding: 12px 20px;
+            z-index: 1000;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,215,0,0.4);
+            pointer-events: none;
+        }
+
+        .info-panel p {
+            color: white;
+            font-weight: 500;
+            font-size: 1rem;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin: 0;
+        }
+
+        .clean-message {
+            font-weight: 600;
+            background: linear-gradient(135deg, #fff8e7, #ffefc0);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            text-shadow: none;
+            letter-spacing: -0.2px;
+        }
+
+        .status-marker {
+            position: absolute;
+            bottom: 90px;
+            right: 16px;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #ffecb3;
+            z-index: 1000;
+            font-family: monospace;
+            border-left: 3px solid #ffcd3c;
+            pointer-events: auto;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+
+        .status-marker:active {
+            transform: scale(0.96);
+        }
+
+        .loader-toast {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(14px);
+            padding: 12px 28px;
+            border-radius: 60px;
+            color: white;
+            font-weight: 500;
+            z-index: 2000;
+            white-space: nowrap;
+            font-size: 0.9rem;
+            border: 1px solid gold;
+            pointer-events: none;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* legend for history points */
+        .history-legend {
+            position: absolute;
+            bottom: 100px;
+            left: 16px;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(8px);
+            border-radius: 28px;
+            padding: 6px 14px;
+            font-size: 0.7rem;
+            color: #ffecb3;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 1000;
+            font-weight: 500;
+            pointer-events: none;
+            border: 1px solid rgba(255,215,0,0.4);
+        }
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            background-color: #ffb347;
+            border-radius: 50%;
+            border: 1px solid white;
+            box-shadow: 0 0 2px rgba(0,0,0,0.5);
+        }
+        .legend-dot.current {
+            background-color: #ffcd3c;
+            width: 16px;
+            height: 16px;
+            border: 2px solid white;
+        }
+
+        @media (max-width: 600px) {
+            .stat-card .stat-value { font-size: 1.3rem; }
+            .stat-card { font-size: 0.75rem; }
+            .stats-panel { padding: 8px 14px; gap: 10px; top: 12px; left: 12px; }
+            .info-panel p { font-size: 0.8rem; gap: 6px; }
+            .status-marker { bottom: 80px; font-size: 0.65rem; }
+            .clean-message { font-size: 0.85rem; }
+            .history-legend { bottom: 110px; left: 12px; font-size: 0.6rem; }
+        }
+
+        /* marker animations */
+        .custom-indy-marker div {
+            transition: transform 0.1s ease;
+        }
+        .other-marker {
+            transition: all 0.1s;
+        }
+    </style>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Stats panel: showing unique contributions & total contributions (points) -->
+    <div class="stats-panel">
+        <div class="stat-card">
+            <span class="stat-value" id="uniqueCounter">0</span>
+            <span>🌍 UNIQUE DEVICES</span>
+        </div>
+        <div class="divider"></div>
+        <div class="stat-card">
+            <span class="stat-value" id="totalPointsCounter">0</span>
+            <span>📍 TOTAL POINTS</span>
+        </div>
+    </div>
+
+    <!-- bottom panel: clean text -->
+    <div class="info-panel">
+        <p>
+            <span id="messageText" class="clean-message">Its been 50 years - Happy Independence Day Seychelles</span>
+        </p>
+    </div>
+
+    <!-- subtle legend for historical points -->
+    <div class="history-legend">
+        <div class="legend-dot"></div>
+        <span>Community tributes (history)</span>
+        <div class="legend-dot current" style="margin-left: 6px;"></div>
+        <span>You</span>
+    </div>
+
+    <div class="status-marker" id="gpsStatus">
+        🛰️ Locating...
+    </div>
+    <div id="loaderToast" class="loader-toast">
+        📍 Accessing GPS & recording your tribute...
+    </div>
+
+    <script>
+        // -------------------------------
+        // STORAGE & UNIQUE DEVICE TRACKING
+        // -------------------------------
+        // localStorage persists all points across sessions -> full history of every contribution.
+        // Each device generates a persistent ID and can submit ONLY ONE point.
+        // The map displays ALL historical points from every device (including this device).
+        // Counters: unique devices (one per deviceId), total points = all entries.
+        
+        // Unique device identifier (persistent across sessions)
+        let deviceId = localStorage.getItem('seychelles_device_id');
+        if (!deviceId) {
+            deviceId = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12) + '_' + (navigator.userAgent.length || 0);
+            localStorage.setItem('seychelles_device_id', deviceId);
+        }
+        
+        // Storage key for all recorded points (full history)
+        const STORAGE_KEY = 'seychelles_independence_points';
+        
+        // Load existing points from localStorage (history of all tributes)
+        let allPoints = [];
+        try {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                allPoints = JSON.parse(stored);
+                if (!Array.isArray(allPoints)) allPoints = [];
+            }
+        } catch(e) { allPoints = []; }
+        
+        // Helper: check if current device already submitted a point
+        function hasDeviceSubmitted() {
+            return allPoints.some(point => point.deviceId === deviceId);
+        }
+        
+        // Helper: update UI counters (unique devices count, total points)
+        function updateCountersUI() {
+            const uniqueDevices = new Set();
+            allPoints.forEach(p => uniqueDevices.add(p.deviceId));
+            const uniqueCount = uniqueDevices.size;
+            const totalPoints = allPoints.length;
+            
+            const uniqueElem = document.getElementById('uniqueCounter');
+            const totalElem = document.getElementById('totalPointsCounter');
+            if (uniqueElem) uniqueElem.innerText = uniqueCount;
+            if (totalElem) totalElem.innerText = totalPoints;
+        }
+        
+        // Record a new point (latitude, longitude) IF device hasn't submitted before.
+        // Returns boolean: true if recorded (first time), false if duplicate (device already present)
+        function recordPointIfNew(lat, lng, accuracyMeters = null) {
+            if (hasDeviceSubmitted()) {
+                console.log("Device already submitted a point. Not recording duplicate.");
+                return false;   // already recorded, do not increment counters, no duplicate history
+            }
+            
+            // Create new point entry with rich metadata
+            const newPoint = {
+                deviceId: deviceId,
+                latitude: lat,
+                longitude: lng,
+                timestamp: Date.now(),
+                accuracy: accuracyMeters || null,
+                recordedAt: new Date().toISOString()
+            };
+            allPoints.push(newPoint);
+            // Save to localStorage permanently (keeping full history)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(allPoints));
+            updateCountersUI();
+            return true;  // first time recorded
+        }
+        
+        // Layer for historical points (all tributes from all devices)
+        let historicalMarkersLayer = null;
+        
+        // Create a beautiful icon for community points (history)
+        function createCommunityIcon() {
+            return L.divIcon({
+                html: `<div style="background-color: #ffb347; width: 12px; height: 12px; border-radius: 50%; border: 2px solid rgba(255,255,200,0.9); box-shadow: 0 0 4px rgba(0,0,0,0.4); transition: all 0.1s;"></div>`,
+                iconSize: [12, 12],
+                className: 'other-marker',
+                popupAnchor: [0, -6]
+            });
+        }
+        
+        // Display ALL historical points from localStorage (complete history)
+        // Also ensures that when new point is added, map updates instantly
+        function displayHistoricalPoints(mapInstance) {
+            if (historicalMarkersLayer) {
+                mapInstance.removeLayer(historicalMarkersLayer);
+            }
+            historicalMarkersLayer = L.layerGroup().addTo(mapInstance);
+            
+            const communityIcon = createCommunityIcon();
+            
+            // Show all points stored (full history)
+            allPoints.forEach(point => {
+                if (point.latitude && point.longitude) {
+                    const marker = L.marker([point.latitude, point.longitude], {
+                        icon: communityIcon,
+                        opacity: 0.85,
+                        zIndexOffset: 100
+                    }).addTo(historicalMarkersLayer);
+                    
+                    // Format timestamp nicely
+                    let dateStr = "recent tribute";
+                    if (point.timestamp) {
+                        const date = new Date(point.timestamp);
+                        dateStr = date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+                    }
+                    // Tooltip / popup with respect, without intrusive symbols
+                    marker.bindPopup(`
+                        <div style="font-size:12px; text-align:center; font-family: 'Inter', sans-serif;">
+                            <strong style="color:#c46f1a;">🇸🇨 Independence Tribute</strong><br/>
+                            <span style="color:#3c2a1f;">${dateStr}</span><br/>
+                            <span style="font-size:10px; opacity:0.7;">Part of Seychelles 50th map</span>
+                        </div>
+                    `, { maxWidth: 180 });
+                }
+            });
+        }
+        
+        // -------------------------------
+        // MAP & GPS INITIALIZATION
+        // -------------------------------
+        const defaultCenter = [-4.6191, 55.4515]; // Victoria, Seychelles
+        const map = L.map('map').setView(defaultCenter, 12);
+        
+        // Google Earth Satellite Layer (high-res)
+        const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: '&copy; <a href="https://www.google.com/intl/en_US/help/terms_maps.html">Google Earth</a>',
+            subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+            maxZoom: 20,
+        });
+        googleSatellite.addTo(map);
+        
+        // fallback if tile error
+        googleSatellite.on('tileerror', function() {
+            if (!map.hasLayer(googleSatellite)) return;
+            const esriSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Esri',
+                maxZoom: 18
+            });
+            map.removeLayer(googleSatellite);
+            esriSat.addTo(map);
+        });
+        
+        let userMarker = null;
+        let accuracyCircle = null;
+        
+        const gpsStatusDiv = document.getElementById('gpsStatus');
+        const loaderToast = document.getElementById('loaderToast');
+        
+        function hideLoader() {
+            if (loaderToast) loaderToast.classList.add('hidden');
+        }
+        
+        function updateGPSStatus(text, isError = false) {
+            if (gpsStatusDiv) {
+                gpsStatusDiv.innerHTML = isError ? `⚠️ ${text}` : `📍 ${text}`;
+                gpsStatusDiv.style.borderLeftColor = isError ? "#ff6b6b" : "#ffcd3c";
+            }
+        }
+        
+        // Add main user marker with celebration popup — reflects current user's position
+        function addUserMarker(lat, lng, accuracyMeters = null, isFirstEntry = false) {
+            if (userMarker) map.removeLayer(userMarker);
+            if (accuracyCircle) map.removeLayer(accuracyCircle);
+            
+            const customIcon = L.divIcon({
+                html: `<div style="background-color: #ffcd3c; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 4px 14px rgba(0,0,0,0.4); font-size: 24px; transition: 0.1s;">🇸🇨</div>`,
+                iconSize: [42, 42],
+                popupAnchor: [0, -20],
+                className: 'custom-indy-marker'
+            });
+            
+            userMarker = L.marker([lat, lng], { icon: customIcon }).addTo(map);
+            // Clean popup: no extra emoji symbols aside from message.
+            let popupContent = `
+                <div style="font-family: 'Inter', sans-serif; text-align: center; padding: 8px 12px;">
+                    <strong style="color: #006b5e;">Its been 50 years</strong><br/>
+                    <span style="font-weight: 600;">Happy Independence Day Seychelles</span><br/>
+                    <span style="font-size: 0.75rem; color: #1e5631;">29th June 1976 - 2026</span>
+            `;
+            if (isFirstEntry) {
+                popupContent += `<br/><span style="background:#ffd966; padding:2px 8px; border-radius:20px; font-size:0.7rem; display:inline-block; margin-top:5px;">First tribute recorded</span>`;
+            }
+            popupContent += `</div>`;
+            userMarker.bindPopup(popupContent, { maxWidth: 260 });
+            userMarker.openPopup();
+            
+            if (accuracyMeters && accuracyMeters > 0 && accuracyMeters < 3000) {
+                accuracyCircle = L.circle([lat, lng], {
+                    radius: accuracyMeters,
+                    color: '#ffaa33',
+                    weight: 1.8,
+                    fillColor: '#ffaa55',
+                    fillOpacity: 0.12
+                }).addTo(map);
+            }
+        }
+        
+        // Main geolocation handler with unique recording logic & persistent history display
+        function locateAndRecord() {
+            if (!navigator.geolocation) {
+                updateGPSStatus("Geolocation not supported", true);
+                hideLoader();
+                addUserMarker(defaultCenter[0], defaultCenter[1]);
+                map.setView(defaultCenter, 13);
+                displayHistoricalPoints(map);
+                updateGPSStatus("⚠️ GPS not supported - default location", true);
+                return;
+            }
+            
+            updateGPSStatus("Requesting location & tribute...");
+            
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const accuracy = position.coords.accuracy;
+                    
+                    updateGPSStatus(`📍 ${lat.toFixed(5)}, ${lng.toFixed(5)} | ±${Math.round(accuracy)}m`);
+                    
+                    // Fly smoothly to user location
+                    map.flyTo([lat, lng], 15, { duration: 1.2 });
+                    
+                    // **** CORE LOGIC: Record point only once per device, but always show full history ****
+                    let isNewRecord = false;
+                    if (!hasDeviceSubmitted()) {
+                        isNewRecord = recordPointIfNew(lat, lng, accuracy);
+                        if (isNewRecord) {
+                            // Show success toast (clean info)
+                            const toastMsg = document.createElement('div');
+                            toastMsg.innerText = "Your tribute has joined the Seychelles map!";
+                            toastMsg.style.position = "absolute";
+                            toastMsg.style.bottom = "100px";
+                            toastMsg.style.left = "20px";
+                            toastMsg.style.background = "#2c5e2e";
+                            toastMsg.style.color = "gold";
+                            toastMsg.style.padding = "8px 16px";
+                            toastMsg.style.borderRadius = "40px";
+                            toastMsg.style.fontWeight = "bold";
+                            toastMsg.style.zIndex = "2000";
+                            toastMsg.style.backdropFilter = "blur(8px)";
+                            toastMsg.style.fontSize = "0.8rem";
+                            document.body.appendChild(toastMsg);
+                            setTimeout(() => toastMsg.remove(), 2800);
+                        }
+                    } else {
+                        console.log("Device already contributed — no counter increment, but history shows previous entry.");
+                    }
+                    
+                    // Add the user marker with celebration (highlight if new)
+                    addUserMarker(lat, lng, accuracy, isNewRecord);
+                    
+                    // CRITICAL: Refresh historical points layer to include the newly added point (if any)
+                    // This ensures history is always up-to-date for all devices.
+                    displayHistoricalPoints(map);
+                    
+                    hideLoader();
+                    
+                    // Animate counters if new record added
+                    if (isNewRecord) {
+                        const uniqueSpan = document.getElementById('uniqueCounter');
+                        if (uniqueSpan) {
+                            uniqueSpan.style.transform = "scale(1.2)";
+                            setTimeout(() => { if(uniqueSpan) uniqueSpan.style.transform = "scale(1)"; }, 300);
+                        }
+                        const totalSpan = document.getElementById('totalPointsCounter');
+                        if (totalSpan) {
+                            totalSpan.style.transform = "scale(1.1)";
+                            setTimeout(() => { if(totalSpan) totalSpan.style.transform = "scale(1)"; }, 300);
+                        }
+                    }
+                },
+                (error) => {
+                    console.warn(error);
+                    let errorMsg = "";
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED: errorMsg = "Permission denied. Manual location?"; break;
+                        case error.POSITION_UNAVAILABLE: errorMsg = "Position unavailable."; break;
+                        case error.TIMEOUT: errorMsg = "Timeout. Showing Seychelles."; break;
+                        default: errorMsg = "Location error.";
+                    }
+                    updateGPSStatus(errorMsg, true);
+                    hideLoader();
+                    // fallback: show default location + historical markers, but do not record default point as user's unique
+                    addUserMarker(defaultCenter[0], defaultCenter[1]);
+                    map.flyTo(defaultCenter, 12, { duration: 1 });
+                    displayHistoricalPoints(map);
+                    if (!hasDeviceSubmitted()) {
+                        updateGPSStatus("Enable GPS to record your tribute", true);
+                    } else {
+                        updateGPSStatus("Already contributed! Welcome back.", false);
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+            );
+        }
+        
+        // Retry manual via status click (refresh location, but still respects one-time rule)
+        function retryLocation() {
+            if (loaderToast) loaderToast.classList.remove('hidden');
+            updateGPSStatus("Re-locating...");
+            if (userMarker) map.removeLayer(userMarker);
+            if (accuracyCircle) map.removeLayer(accuracyCircle);
+            locateAndRecord();
+        }
+        
+        // attach click to GPS status bar
+        if (gpsStatusDiv) {
+            gpsStatusDiv.style.cursor = "pointer";
+            gpsStatusDiv.addEventListener('click', (e) => {
+                e.stopPropagation();
+                retryLocation();
+            });
+            gpsStatusDiv.title = "Tap to refresh GPS & check tribute status";
+        }
+        
+        // resize handling
+        window.addEventListener('resize', () => { setTimeout(() => map.invalidateSize(), 100); });
+        
+        // Initialization: show full historical points from ALL previous users, and then locate user
+        function initMapAndPoints() {
+            map.invalidateSize();
+            // First display ALL historical points (complete archive)
+            displayHistoricalPoints(map);
+            updateCountersUI();  // ensures UI shows actual stored stats (history + unique)
+            // Trigger location with recording logic after slight delay
+            setTimeout(() => {
+                locateAndRecord();
+            }, 400);
+        }
+        
+        // Additional safety: fallback timeout for loader removal and ensure history appears
+        setTimeout(() => {
+            if (loaderToast && !loaderToast.classList.contains('hidden')) {
+                loaderToast.classList.add('hidden');
+                if (!userMarker) {
+                    addUserMarker(defaultCenter[0], defaultCenter[1]);
+                    map.setView(defaultCenter, 12);
+                    displayHistoricalPoints(map);
+                }
+            }
+        }, 11000);
+        
+        // Force sync for localStorage and ensure historical data is always displayed on map
+        window.addEventListener('load', () => {
+            initMapAndPoints();
+            // extra sync for counters
+            updateCountersUI();
+            // Ensure bottom message text is clean (no stray symbols)
+            const msgSpan = document.getElementById('messageText');
+            if (msgSpan) {
+                msgSpan.innerText = "Its been 50 years - Happy Independence Day Seychelles";
+                msgSpan.style.display = "inline-block";
+            }
+            // remove any hidden emoji remnants
+            const infoPanel = document.querySelector('.info-panel');
+            if (infoPanel) {
+                const allEmojiSpans = infoPanel.querySelectorAll('.emoji');
+                allEmojiSpans.forEach(span => span.remove());
+            }
+            
+            // Optional: debug persistence note
+            console.log(`History loaded: ${allPoints.length} total points from ${new Set(allPoints.map(p=>p.deviceId)).size} unique devices.`);
+        });
+        
+        // Observer to keep bottom message pristine
+        const observer = new MutationObserver(() => {
+            const msgElement = document.getElementById('messageText');
+            if (msgElement && msgElement.innerText !== "Its been 50 years - Happy Independence Day Seychelles") {
+                msgElement.innerText = "Its been 50 years - Happy Independence Day Seychelles";
+            }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        
+        // CSS to guarantee no extra symbols or emoji-only spans pop up
+        const styleCleanup = document.createElement('style');
+        styleCleanup.textContent = `
+            .info-panel .emoji, .info-panel span[class*="emoji"] {
+                display: none !important;
+            }
+            .clean-message::before, .clean-message::after {
+                content: none !important;
+            }
+            .other-marker {
+                background: transparent;
+            }
+            .leaflet-popup-content-wrapper {
+                border-radius: 20px;
+            }
+        `;
+        document.head.appendChild(styleCleanup);
+        
+        // Additional: create a manual history refresh if new points added from another tab? but fine.
+        // Ensure that any new point added via any session is always shown. Because allPoints is loaded from localStorage
+        // and displayHistoricalPoints refreshes markers each time.
+        window.addEventListener('storage', (e) => {
+            if (e.key === STORAGE_KEY) {
+                try {
+                    const newData = JSON.parse(e.newValue);
+                    if (newData && Array.isArray(newData)) {
+                        allPoints = newData;
+                        updateCountersUI();
+                        displayHistoricalPoints(map);
+                    }
+                } catch(err) {}
+            }
+        });
+        
+        console.log("Seychelles Independence Map ready — full history of tributes preserved.");
+    </script>
+</body>
+</html>
